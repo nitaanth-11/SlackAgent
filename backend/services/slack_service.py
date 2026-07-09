@@ -1,16 +1,16 @@
-import os
 import logging
 from backend.slack.client import get_slack_app
 from backend.models.incident import Incident
 from backend.slack.blocks import get_announcement_blocks, get_resolved_blocks
+from backend import config
 
 logger = logging.getLogger(__name__)
 
 def post_incident_announcement(incident: Incident) -> bool:
     app = get_slack_app()
-    channel_id = os.environ.get("DEFAULT_SLACK_CHANNEL")
+    channel_id = config.DEFAULT_SLACK_CHANNEL
     if not channel_id:
-        logger.error("DEFAULT_SLACK_CHANNEL not set in environment.")
+        logger.error("DEFAULT_SLACK_CHANNEL not set in configuration.")
         return False
         
     try:

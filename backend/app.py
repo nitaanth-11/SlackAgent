@@ -1,7 +1,6 @@
-import os
 import logging
 from flask import Flask
-from dotenv import load_dotenv
+from backend import config
 
 # Set up logging configuration
 logging.basicConfig(
@@ -10,12 +9,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-else:
-    load_dotenv()
+# Validate configuration
+missing_vars = config.validate_config()
+if missing_vars:
+    logger.warning(f"Missing configuration values in .env: {', '.join(missing_vars)}")
 
 # Initialize Flask app
 flask_app = Flask(__name__)
@@ -45,5 +42,4 @@ except Exception as e:
     logger.error(f"Failed to register Slack Bolt listeners: {e}")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    flask_app.run(host="0.0.0.0", port=port)
+    flask_app.run(host="0.0.0.0", port=config.PORT)
