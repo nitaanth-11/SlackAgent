@@ -1,57 +1,76 @@
 import logging
-from backend.slack.client import get_slack_app
-from backend.models.incident import Incident
-from backend.slack.blocks import get_announcement_blocks, get_resolved_blocks
-from backend import config
+
+try:
+    import config
+except ImportError:
+    from backend import config
+
+from slack.client import get_slack_app
+from slack.blocks import build_incident_blocks, build_updated_blocks
+from services.incident_service import IncidentService
 
 logger = logging.getLogger(__name__)
 
-def post_incident_announcement(incident: Incident) -> bool:
-    app = get_slack_app()
-    channel_id = config.DEFAULT_SLACK_CHANNEL
-    if not channel_id:
-        logger.error("DEFAULT_SLACK_CHANNEL not set in configuration.")
-        return False
-        
-    try:
-        blocks = get_announcement_blocks(incident)
-        # Post the message to the channel
-        response = app.client.chat_postMessage(
-            channel=channel_id,
-            blocks=blocks,
-            text=f"🚨 New Incident: {incident.title}"
-        )
-        if response.get("ok"):
-            ts = response.get("ts")
-            channel = response.get("channel")
-            # Update the incident metadata with channel_id and message_ts
-            from backend.services.incident_service import update_incident_slack_meta
-            update_incident_slack_meta(incident.id, channel, ts)
-            return True
-    except Exception as e:
-        logger.error(f"Failed to post incident announcement: {e}")
-    return False
 
-def update_incident_announcement(incident: Incident, user_name: str, status: str) -> bool:
-    app = get_slack_app()
-    if not incident.channel_id or not incident.message_ts:
-        logger.error(f"Incident {incident.id} is missing channel_id or message_ts.")
-        return False
-        
-    try:
-        if status == "resolved":
-            blocks = get_resolved_blocks(incident, user_name)
-        else:
-            # Under progress, acknowledged
-            blocks = get_announcement_blocks(incident, acknowledged_by=user_name)
-            
-        response = app.client.chat_update(
-            channel=incident.channel_id,
-            ts=incident.message_ts,
-            blocks=blocks,
-            text=f"🚨 Incident Updated: {incident.title} ({status})"
-        )
-        return response.get("ok", False)
-    except Exception as e:
-        logger.error(f"Failed to update incident announcement: {e}")
-    return False
+class SlackService:
+
+    @staticmethod
+    def post_incident(incident: dict) -> dict:
+        """Post an incident card to the configured Slack channel.
+        Returns the updated incident dict with slack_channel and slack_message_ts.
+        """
+        app = get_slack_app()
+        channel = config.DEFAULT_SLACK_CHANNEL
+
+        if not channel:
+            logger.error("DEFAULT_SLACK_CHANNEL not set.")
+            return incident
+
+        blocks = build_incident_blocks(incident)
+        incident_id = incident.get("incident_id", "???")
+
+        try:
+            response = app.client.chat_postMessage(
+                channel=channel,
+                blocks=blocks,
+                text=f":rotating_light: New Incident: {incident.get('title', '')}",
+            )
+
+            if response.get("ok"):
+                ts = response.get("ts")
+                ch = response.get("channel")
+
+                updated = IncidentService.update_slack_meta(incident_id, ch, ts)
+                logger.info(f"Incident {incident_id} posted to Slack channel {ch}.")
+                return updated or incident
+
+        except Exception as e:
+            logger.error(f"Failed to post incident to Slack: {e}")
+
+        return incident
+
+    @staticmethod
+    def update_incident_message(incident: dict) -> bool:
+        """Update the existing Slack message for an incident."""
+        app = get_slack_app()
+        channel = incident.get("slack_channel")
+        ts = incident.get("slack_message_ts")
+
+        if not channel or not ts:
+            logger.warning(f"Incident {incident.get('incident_id')} missing Slack metadata, cannot update message.")
+            return False
+
+        blocks = build_updated_blocks(incident)
+
+        try:
+            response = app.client.chat_update(
+                channel=channel,
+                ts=ts,
+                blocks=blocks,
+                text=f"Incident Update: {incident.get('title', '')}",
+            )
+            return response.get("ok", False)
+
+        except Exception as e:
+            logger.error(f"Failed to update Slack message: {e}")
+            return False

@@ -1,43 +1,47 @@
 import os
 from dotenv import load_dotenv
 
-# Find and load .env file from the current directory or parent directories
-base_dir = os.path.abspath(os.path.dirname(__file__))
-# Check if .env exists in backend/ or root SlackAgent/
-backend_env = os.path.join(base_dir, ".env")
-root_env = os.path.join(os.path.dirname(base_dir), ".env")
+load_dotenv()
 
-if os.path.exists(backend_env):
-    load_dotenv(backend_env)
-elif os.path.exists(root_env):
-    load_dotenv(root_env)
-else:
-    load_dotenv()  # Fallback to standard environment search
+# -------------------------
+# Slack
+# -------------------------
 
-# Slack configurations
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
-SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET") or os.getenv("SLACK_SIGNINIG_SECRET")
+SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
-DEFAULT_SLACK_CHANNEL = os.getenv("DEFAULT_SLACK_CHANNEL", "C0123456789")
 
-# Supabase configurations
+DEFAULT_SLACK_CHANNEL = os.getenv("DEFAULT_SLACK_CHANNEL")
+
+# -------------------------
+# Supabase
+# -------------------------
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE") or os.getenv("SUPABASE_ANON") or os.getenv("SUPABASE_API") or os.getenv("SUPABASE_KEY")
-DATABASE_URL = os.getenv("DATABASE-URL") or os.getenv("DATABASE_URL")
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
-# Flask server configuration
-PORT = int(os.getenv("PORT", 5000))
-DEBUG = os.getenv("FLASK_DEBUG", "true").lower() in ("true", "1", "yes")
+# -------------------------
+# Database
+# -------------------------
 
-# Validate configuration presence and log/warn appropriately
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# -------------------------
+# FastAPI
+# -------------------------
+
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", 8000))
+ENV = os.getenv("ENV", "development")
+
+
 def validate_config():
-    missing = []
-    if not SLACK_BOT_TOKEN:
-        missing.append("SLACK_BOT_TOKEN")
-    if not SLACK_SIGNING_SECRET:
-        missing.append("SLACK_SIGNING_SECRET")
-    if not SUPABASE_URL:
-        missing.append("SUPABASE_URL")
-    if not SUPABASE_KEY:
-        missing.append("SUPABASE_KEY")
+    required = {
+        "SLACK_BOT_TOKEN": SLACK_BOT_TOKEN,
+        "SLACK_SIGNING_SECRET": SLACK_SIGNING_SECRET,
+        "SUPABASE_URL": SUPABASE_URL,
+    }
+
+    missing = [key for key, value in required.items() if not value]
+
     return missing

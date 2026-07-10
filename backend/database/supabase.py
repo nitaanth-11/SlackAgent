@@ -1,24 +1,22 @@
+"""Supabase client singleton — initialized at import time."""
+
 import logging
-from typing import Optional
-from supabase import create_client, Client
-from backend import config
+from supabase import create_client
+
+try:
+    from config import SUPABASE_URL, SUPABASE_SECRET_KEY
+except ImportError:
+    from backend.config import SUPABASE_URL, SUPABASE_SECRET_KEY
 
 logger = logging.getLogger(__name__)
 
-is_supabase_configured = (
-    config.SUPABASE_URL 
-    and config.SUPABASE_KEY 
-    and not config.SUPABASE_URL.startswith("https://your-project")
-    and config.SUPABASE_KEY != "your-supabase-anon-or-service-role-key"
-)
+supabase = None
 
-supabase_client: Optional[Client] = None
-
-if is_supabase_configured:
+if SUPABASE_URL and SUPABASE_SECRET_KEY:
     try:
-        supabase_client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
-        logger.info("Successfully connected to Supabase client.")
+        supabase = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+        logger.info("Supabase client initialized.")
     except Exception as e:
-        logger.error(f"Failed to connect to Supabase: {e}.")
+        logger.error(f"Failed to initialize Supabase client: {e}")
 else:
-    logger.warning("Supabase URL or Key not set. Supabase client will be initialized as None (using in-memory fallback).")
+    logger.warning("Supabase credentials missing. Client not initialized.")

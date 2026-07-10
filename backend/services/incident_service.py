@@ -1,99 +1,128 @@
+import uuid
 import logging
-from typing import List, Optional
-from backend.models.incident import Incident
-from backend.database.supabase import supabase_client
+from datetime import datetime, timezone
+from typing import Optional
+
+from database.supabase import supabase
 
 logger = logging.getLogger(__name__)
 
-# In-memory backup database to keep the app working if Supabase is not configured yet
-mock_incidents_db = []
-mock_id_counter = 1
 
-def create_incident(title: str, description: str, severity: str) -> Incident:
-    global mock_id_counter
-    incident = Incident(
-        title=title,
-        description=description,
-        severity=severity,
-        status="open"
-    )
-    
-    if supabase_client:
-        try:
-            data = incident.to_dict()
-            response = supabase_client.table("incidents").insert(data).execute()
-            if response.data and len(response.data) > 0:
-                return Incident.from_dict(response.data[0])
-        except Exception as e:
-            logger.error(f"Error creating incident in Supabase: {e}. Saving to in-memory fallback.")
-    
-    # In-memory fallback
-    incident.id = mock_id_counter
-    mock_id_counter += 1
-    mock_incidents_db.append(incident)
-    return incident
+class IncidentService:
 
-def update_incident_status(incident_id: int, status: str) -> Optional[Incident]:
-    if supabase_client:
-        try:
-            response = supabase_client.table("incidents").update({"status": status}).eq("id", incident_id).execute()
-            if response.data and len(response.data) > 0:
-                return Incident.from_dict(response.data[0])
-        except Exception as e:
-            logger.error(f"Error updating incident status in Supabase: {e}.")
-            
-    # In-memory fallback
-    for incident in mock_incidents_db:
-        if incident.id == incident_id:
-            incident.status = status
-            return incident
-    return None
+    @staticmethod
+    def _generate_id() -> str:
+        return f"INC-{str(uuid.uuid4())[:8].upper()}"
 
-def update_incident_slack_meta(incident_id: int, channel_id: str, message_ts: str) -> Optional[Incident]:
-    if supabase_client:
-        try:
-            response = supabase_client.table("incidents").update({
-                "channel_id": channel_id,
-                "message_ts": message_ts
-            }).eq("id", incident_id).execute()
-            if response.data and len(response.data) > 0:
-                return Incident.from_dict(response.data[0])
-        except Exception as e:
-            logger.error(f"Error updating incident slack meta in Supabase: {e}.")
-            
-    # In-memory fallback
-    for incident in mock_incidents_db:
-        if incident.id == incident_id:
-            incident.channel_id = channel_id
-            incident.message_ts = message_ts
-            return incident
-    return None
+    @staticmethod
+    def _now() -> str:
+        return datetime.now(timezone.utc).isoformat()
 
-def get_incident(incident_id: int) -> Optional[Incident]:
-    if supabase_client:
-        try:
-            response = supabase_client.table("incidents").select("*").eq("id", incident_id).execute()
-            if response.data and len(response.data) > 0:
-                return Incident.from_dict(response.data[0])
-        except Exception as e:
-            logger.error(f"Error fetching incident from Supabase: {e}.")
-            
-    # In-memory fallback
-    for incident in mock_incidents_db:
-        if incident.id == incident_id:
-            return incident
-    return None
+    # --------------------------------------------------
+    # Create
+    # --------------------------------------------------
 
-def list_incidents() -> List[Incident]:
-    if supabase_client:
-        try:
-            response = supabase_client.table("incidents").select("*").execute()
-            if response.data:
-                # Supabase table order can be sorted by created_at or id
-                sorted_data = sorted(response.data, key=lambda x: x.get("created_at") or "", reverse=True)
-                return [Incident.from_dict(item) for item in sorted_data]
-        except Exception as e:
-            logger.error(f"Error listing incidents from Supabase: {e}.")
-            
-    # In-memory fallback
-    return list(reversed(mock_incidents_db))
+    @staticmethod
+    def create_incident(data: dict) -> dict:
+        incident = {
+            "incident_id": IncidentService._generate_id(),
+            "title": data["title"],
+            "description": data.get("description", ""),
+            "service": data.get("service", "unknown"),
+            "severity": data.get("severity", "MEDIUM").upper(),
+            "status": "OPEN",
+            "owner": None,
+            "slack_channel": None,
+            "slack_message_ts": None,
+            "created_at": IncidentService._now(),
+            "updated_at": IncidentService._now(),
+            "resolved_at": None,
+        }
+
+        response = supabase.table("incidents").insert(incident).execute()
+        logger.info(f"Incident created: {incident['incident_id']}")
+        return response.data[0]
+
+    # --------------------------------------------------
+    # Get One
+    # --------------------------------------------------
+
+    @staticmethod
+    def get_incident(incident_id: str) -> Optional[dict]:
+        response = (
+            supabase.table("incidents")
+            .select("*")
+            .eq("incident_id", incident_id)
+            .execute()
+        )
+
+        if response.data:
+            return response.data[0]
+        return None
+
+    # --------------------------------------------------
+    # List All
+    # --------------------------------------------------
+
+    @staticmethod
+    def list_incidents() -> list:
+        response = (
+            supabase.table("incidents")
+            .select("*")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return response.data
+
+    # --------------------------------------------------
+    # Update
+    # --------------------------------------------------
+
+    @staticmethod
+    def update_incident(incident_id: str, updates: dict) -> Optional[dict]:
+        updates["updated_at"] = IncidentService._now()
+
+        response = (
+            supabase.table("incidents")
+            .update(updates)
+            .eq("incident_id", incident_id)
+            .execute()
+        )
+
+        if response.data:
+            logger.info(f"Incident updated: {incident_id}")
+            return response.data[0]
+        return None
+
+    # --------------------------------------------------
+    # Assign Owner
+    # --------------------------------------------------
+
+    @staticmethod
+    def assign_owner(incident_id: str, owner: str) -> Optional[dict]:
+        return IncidentService.update_incident(incident_id, {
+            "owner": owner,
+            "status": "ASSIGNED",
+        })
+
+    # --------------------------------------------------
+    # Resolve
+    # --------------------------------------------------
+
+    @staticmethod
+    def resolve_incident(incident_id: str) -> Optional[dict]:
+        return IncidentService.update_incident(incident_id, {
+            "status": "RESOLVED",
+            "resolved_at": IncidentService._now(),
+        })
+
+    # --------------------------------------------------
+    # Update Slack Metadata
+    # --------------------------------------------------
+
+    @staticmethod
+    def update_slack_meta(incident_id: str, channel: str, ts: str) -> Optional[dict]:
+        return IncidentService.update_incident(incident_id, {
+            "slack_channel": channel,
+            "slack_message_ts": ts,
+        })

@@ -1,11 +1,10 @@
-from flask import Blueprint, jsonify
+from fastapi import APIRouter
 
-health_blueprint = Blueprint("health", __name__)
+router = APIRouter(prefix="/health", tags=["Health"])
 
-@health_blueprint.route("/health", methods=["GET"])
-@health_blueprint.route("/api/health", methods=["GET"])
-def health_check():
-    return jsonify({
+@router.get("/")
+def health():
+    return {
         "status": "healthy",
         "service": "OpsPilot Backend"
-    }), 200
+    }
