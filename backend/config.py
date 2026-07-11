@@ -1,8 +1,9 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
-
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 # -------------------------
 # Slack
 # -------------------------
@@ -18,8 +19,9 @@ DEFAULT_SLACK_CHANNEL = os.getenv("DEFAULT_SLACK_CHANNEL")
 # -------------------------
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
-
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+print("SUPABASE_URL:", SUPABASE_URL)
+print("SUPABASE_KEY exists:", bool(SUPABASE_SECRET_KEY))
 # -------------------------
 # Database
 # -------------------------

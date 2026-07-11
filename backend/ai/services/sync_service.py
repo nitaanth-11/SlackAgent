@@ -2,7 +2,7 @@ from api import incidents
 import logging
 
 from backend.ai.services.offline_queue import offline_queue
-from backend.ai.services.supabase_service import supabase
+from backend.database.supabase import supabase
 
 import threading
 
