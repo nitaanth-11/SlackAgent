@@ -22,6 +22,12 @@ from slack.client import get_slack_app
 from slack.commands import register_commands
 from slack.actions import register_actions
 from slack.events import register_events
+from ai.services.offline_detector import offline_detector
+from ai.services.offline_queue import offline_queue
+from ai.services.sync_service import sync_service
+from ai.services.location_cache import location_cache
+import threading
+import time
 
 # --------------------------------------------------
 # Logging
@@ -82,6 +88,35 @@ except Exception as e:
     logger.exception(f"Failed to initialize Slack Bolt: {e}")
 
 # --------------------------------------------------
+# Background Network Monitor
+# --------------------------------------------------
+
+def monitor_network():
+    while True:
+        online = offline_detector.check_connection()
+
+        if online != offline_detector.previous_status:
+
+            if online:
+                logger.info("Internet connection restored!")
+                sync_service.sync()
+            else:
+                logger.warning("Internet connection lost!")
+
+                offline_queue.add_incident({
+                    "id": f"OFFLINE-{int(time.time())}",
+                    "severity": "UNKNOWN",
+                    "summary": "Internet connectivity lost",
+                    "location": location_cache.get(),
+                })
+
+                logger.info("Incident stored in offline queue.")            
+
+            offline_detector.previous_status = online
+
+        time.sleep(5)
+
+# --------------------------------------------------
 # Slack Events Endpoint
 # --------------------------------------------------
 
@@ -107,15 +142,29 @@ def root():
     }
 
 # --------------------------------------------------
+# Network Status
+# --------------------------------------------------
+
+@app.get("/network/status")
+def network_status():
+    offline_detector.check_connection()
+    return offline_detector.get_status()
+
+# --------------------------------------------------
 # Local Development
 # --------------------------------------------------
 
 if __name__ == "__main__":
+    threading.Thread(
+        target=monitor_network,
+        daemon=True,
+    ).start()
+
     import uvicorn
 
     uvicorn.run(
-        "app:app",
+        app,
         host=config.HOST,
         port=config.PORT,
-        reload=True,
+        reload=False,
     )
