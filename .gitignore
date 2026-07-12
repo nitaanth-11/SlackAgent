@@ -12,3 +12,4 @@ env/
 # Local configuration files
 .env
 backend/.env
+.DS_Store
