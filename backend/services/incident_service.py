@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from database.supabase import supabase
-
+from schemas.incident import IncidentResponse
+from ai.enrich import enrich_incident
 logger = logging.getLogger(__name__)
 
 
@@ -40,8 +41,18 @@ class IncidentService:
         }
 
         response = supabase.table("incidents").insert(incident).execute()
+        incident_obj = IncidentResponse(**response.data[0])
+
+        enrichment = enrich_incident(incident_obj)
+
+        print("\n========== AI ENRICHMENT ==========")
+        print(enrichment)
+        print("==================================\n")
+        
         logger.info(f"Incident created: {incident['incident_id']}")
-        return response.data[0]
+        result = response.data[0]
+        result["ai_enrichment"] = enrichment.model_dump()
+        return result
 
     # --------------------------------------------------
     # Get One

@@ -1,13 +1,14 @@
 SYSTEM_PROMPT = """
 You are an expert Site Reliability Engineer (SRE).
 
-Your job is to analyze software incidents.
+Analyze software incidents accurately.
 
-Be concise.
-Do not hallucinate.
-Only use information provided.
+Do not invent facts.
+Only use the information provided.
 
-Return a short executive summary.
+Return the answer in plain English.
+
+Keep every section short.
 """
 
 
@@ -22,5 +23,17 @@ Service:
 Description:
 {description}
 
-Generate a concise incident summary.
+Analyze this incident and provide:
+
+Summary:
+(1-2 sentences)
+
+Possible Root Cause:
+(1-2 bullet points)
+
+Recommended Actions:
+(3 short bullet points)
+
+Confidence:
+(High / Medium / Low)
 """

@@ -26,6 +26,8 @@ from ai.services.offline_detector import offline_detector
 from ai.services.offline_queue import offline_queue
 from ai.services.sync_service import sync_service
 from ai.services.location_cache import location_cache
+from ai.services.sms.mock_sms import sms_provider
+from ai.services.contact_cache import contact_cache
 import threading
 import time
 
@@ -110,7 +112,17 @@ def monitor_network():
                     "location": location_cache.get(),
                 })
 
-                logger.info("Incident stored in offline queue.")            
+                logger.info("Incident stored in offline queue.")
+
+                contacts = contact_cache.get_contacts()
+
+                if contacts:
+                    sms_provider.send_sms(
+                        phone=contacts[0]["phone"],
+                        message="⚠️ Internet lost. Incident stored locally and will sync automatically."
+                    )
+                else:
+                    logger.warning("No emergency contact found.")         
 
             offline_detector.previous_status = online
 

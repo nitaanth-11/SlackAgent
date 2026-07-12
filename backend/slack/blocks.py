@@ -1,3 +1,4 @@
+from ai.mock import mock_ai
 def build_incident_blocks(incident: dict) -> list:
     """Build Block Kit blocks for an incident card in Slack."""
 
@@ -18,6 +19,26 @@ def build_incident_blocks(incident: dict) -> list:
     severity_str = severity_map.get(incident.get("severity", "").upper(), incident.get("severity", ""))
     status_str = status_map.get(incident.get("status", "").upper(), incident.get("status", ""))
     owner = incident.get("owner") or "_Unassigned_"
+    ai = incident.get("ai_enrichment", {})
+
+    summary = ai.get("summary", "Not available")
+
+    severity_ai = ai.get("severity", {})
+    severity_text = (
+        f"{severity_ai.get('label', 'Unknown')} "
+        f"({int(severity_ai.get('confidence', 0) * 100)}%)"
+    )
+
+    causes = ai.get("probable_causes", [])
+    cause_text = (
+        causes[0]["cause"]
+        if causes else "Unknown"
+    )
+
+    actions = ai.get("suggested_actions", [])
+    actions_text = "\n".join(
+        f"• {action}" for action in actions
+    )
     incident_id = incident.get("incident_id", "???")
 
     blocks = [
@@ -59,6 +80,23 @@ def build_incident_blocks(incident: dict) -> list:
                 {"type": "mrkdwn", "text": f"*Owner:* {owner}"},
             ],
         },
+
+        {"type": "divider"},
+
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    "*🤖 AI Incident Analysis*\n\n"
+                    f"*Summary:*\n{summary}\n\n"
+                    f"*Predicted Severity:*\n{severity_text}\n\n"
+                    f"*Most Likely Cause:*\n{cause_text}\n\n"
+                    f"*Recommended Actions:*\n{actions_text}"
+                ),
+            },
+        },
+
         {"type": "divider"},
         {
             "type": "actions",

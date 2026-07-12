@@ -1,7 +1,8 @@
 from slack_bolt import App
-
+from ai.services.offline_detector import offline_detector
+from ai.services.offline_queue import offline_queue
 from slack.blocks import build_incident_blocks
-
+from ai.services.sms.mock_sms import sms_provider
 
 def register_commands(app: App):
 
@@ -91,5 +92,10 @@ def register_commands(app: App):
         from services.incident_service import IncidentService
         from services.slack_service import SlackService
 
-        incident = IncidentService.create_incident(data)
-        SlackService.post_incident(incident)
+        online = offline_detector.check_connection()
+
+        if online:
+            incident = IncidentService.create_incident(data)
+            SlackService.post_incident(incident)
+        else:
+            offline_queue.add_incident(data)
