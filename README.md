@@ -8,6 +8,12 @@ OpsPilot is a Slack-native incident operations assistant that helps engineering 
 
 OpsPilot keeps the entire incident response lifecycle inside Slack. Instead of switching between dashboards, documentation, and communication tools, engineers receive AI-enriched context, collaborate with teammates, assign ownership, share updates, and resolve incidents from a single workspace.
 
+## System Architecture
+
+<p align="center">
+  <img src="assets/architecture.svg" alt="OpsPilot Architecture" width="100%">
+</p>
+
 ## Architecture
 
 > Slack Alert → FastAPI → AI Enrichment → Supabase → Slack Actions → Incident Resolution
