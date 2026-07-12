@@ -22,23 +22,7 @@ class SlackService:
         """
 
         app = get_slack_app()
-
-        # ==========================
-        # DEBUG INFORMATION
-        # ==========================
-        try:
-            auth = app.client.auth_test()
-            logger.info("=" * 60)
-            logger.info("SLACK AUTH TEST")
-            logger.info(auth)
-            logger.info("=" * 60)
-        except Exception as e:
-            logger.error(f"AUTH TEST FAILED: {e}")
-
         channel = config.DEFAULT_SLACK_CHANNEL
-
-        logger.info(f"DEFAULT_SLACK_CHANNEL = {channel}")
-        logger.info(f"SLACK_BOT_TOKEN starts with: {config.SLACK_BOT_TOKEN[:25]}...")
 
         if not channel:
             logger.error("DEFAULT_SLACK_CHANNEL not set.")
@@ -48,37 +32,13 @@ class SlackService:
         incident_id = incident.get("incident_id", "???")
 
         try:
-            logger.info(f"Posting to Slack channel: {channel}")
-            response = app.client.conversations_join(
-                channel=channel
-            )
-
-            logger.info(response)
-
-            # Check whether the bot can see the channel
-            info = app.client.conversations_info(channel=channel)
-            logger.info("=" * 60)
-            logger.info("CHANNEL INFO")
-            logger.info(info)
-            logger.info("=" * 60)
-
-            # Check whether the bot is a member
-            members = app.client.conversations_members(channel=channel)
-            logger.info("=" * 60)
-            logger.info("CHANNEL MEMBERS")
-            logger.info(members)
-            logger.info("=" * 60)
+            app.client.conversations_join(channel=channel)
 
             response = app.client.chat_postMessage(
                 channel=channel,
                 blocks=blocks,
                 text=f":rotating_light: New Incident: {incident.get('title', '')}",
             )
-
-            logger.info("=" * 60)
-            logger.info("chat_postMessage RESPONSE")
-            logger.info(response)
-            logger.info("=" * 60)
 
             if response.get("ok"):
                 ts = response.get("ts")
@@ -94,10 +54,10 @@ class SlackService:
                 return updated or incident
 
             else:
-                logger.error(f"Slack returned error: {response}")
+                logger.error(f"Slack API error posting incident {incident_id}.")
 
         except Exception as e:
-            logger.exception("Slack API Exception")
+            logger.exception(f"Failed to post incident {incident_id} to Slack.")
 
         return incident
 

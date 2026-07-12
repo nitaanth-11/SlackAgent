@@ -47,6 +47,4 @@ class OllamaProvider(BaseAIProvider):
             ],
         )
 
-        print(response)
-
         return get_mock_enrichment()

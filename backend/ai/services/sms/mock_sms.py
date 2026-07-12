@@ -8,10 +8,6 @@ logger = logging.getLogger(__name__)
 class MockSMSProvider(BaseSMSProvider):
 
     def send_sms(self, phone: str, message: str):
-        print("=" * 50)
-        print("📱 MOCK SMS SENT")
-        print(f"To      : {phone}")
-        print(f"Message : {message}")
-        print("=" * 50)
+        logger.info(f"[Mock SMS] To: {phone} | Message: {message}")
 
 sms_provider = MockSMSProvider()

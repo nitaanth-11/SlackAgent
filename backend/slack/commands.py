@@ -1,8 +1,10 @@
+import logging
 from slack_bolt import App
 from ai.services.offline_detector import offline_detector
 from ai.services.offline_queue import offline_queue
-from slack.blocks import build_incident_blocks
-from ai.services.sms.mock_sms import sms_provider
+
+
+logger = logging.getLogger(__name__)
 
 def register_commands(app: App):
 
@@ -73,29 +75,66 @@ def register_commands(app: App):
                 },
             )
         except Exception as e:
-            app.logger.error(f"Error opening incident modal: {e}")
+            logger.error(f"Failed to open incident modal: {e}")
+            try:
+                client.chat_postEphemeral(
+                    channel=body["channel_id"],
+                    user=body["user_id"],
+                    text="⚠️ Failed to open the form. Please try again.",
+                )
+            except Exception:
+                pass
 
     @app.view("create_incident_modal")
     def handle_modal_submission(ack, body, client, view):
         """Handle the incident creation modal submission."""
-        ack()
-
         values = view["state"]["values"]
 
+        title = (values["title_block"]["title_input"]["value"] or "").strip()
+        description = (values["description_block"]["description_input"]["value"] or "").strip()
+        service = (values["service_block"]["service_input"]["value"] or "").strip()
+        severity_opt = values["severity_block"]["severity_select"].get("selected_option")
+
+        errors = {}
+        if not title:
+            errors["title_block"] = "Title is required."
+        if not description:
+            errors["description_block"] = "Description is required."
+        if not service:
+            errors["service_block"] = "Service is required."
+        if not severity_opt:
+            errors["severity_block"] = "Please select a severity level."
+
+        if errors:
+            ack(response_action="errors", errors=errors)
+            return
+
+        ack()
+
         data = {
-            "title": values["title_block"]["title_input"]["value"],
-            "description": values["description_block"]["description_input"]["value"],
-            "service": values["service_block"]["service_input"]["value"],
-            "severity": values["severity_block"]["severity_select"]["selected_option"]["value"],
+            "title": title,
+            "description": description,
+            "service": service,
+            "severity": severity_opt["value"],
         }
 
         from services.incident_service import IncidentService
         from services.slack_service import SlackService
 
-        online = offline_detector.check_connection()
+        try:
+            online = offline_detector.check_connection()
 
-        if online:
-            incident = IncidentService.create_incident(data)
-            SlackService.post_incident(incident)
-        else:
-            offline_queue.add_incident(data)
+            if online:
+                incident = IncidentService.create_incident(data)
+                SlackService.post_incident(incident)
+            else:
+                offline_queue.add_incident(data)
+        except Exception as e:
+            logger.error(f"Failed to create incident: {e}")
+            try:
+                client.chat_postMessage(
+                    channel=body["user"]["id"],
+                    text="⚠️ Failed to create incident. Please try again.",
+                )
+            except Exception:
+                pass

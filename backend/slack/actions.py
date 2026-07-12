@@ -1,4 +1,7 @@
+import logging
 from slack_bolt import App
+
+logger = logging.getLogger(__name__)
 
 
 def register_actions(app: App):
@@ -39,14 +42,26 @@ def register_actions(app: App):
                 },
             )
         except Exception as e:
-            app.logger.error(f"Error opening assign owner modal: {e}")
+            logger.error(f"Failed to open assign owner modal: {e}")
+            try:
+                client.chat_postEphemeral(
+                    channel=body["channel"]["id"],
+                    user=body["user"]["id"],
+                    text="⚠️ Something went wrong. Please try again.",
+                )
+            except Exception:
+                pass
 
     @app.view("assign_owner_modal")
-    def handle_assign_owner_submit(ack, body, view):
+    def handle_assign_owner_submit(ack, body, client, view):
+        owner = (view["state"]["values"]["owner_block"]["owner_input"]["value"] or "").strip()
+        if not owner:
+            ack(response_action="errors", errors={"owner_block": "Owner name cannot be empty."})
+            return
+
         ack()
         try:
             incident_id = view["private_metadata"]
-            owner = view["state"]["values"]["owner_block"]["owner_input"]["value"]
 
             from services.incident_service import IncidentService
             from services.slack_service import SlackService
@@ -55,7 +70,7 @@ def register_actions(app: App):
             if updated:
                 SlackService.update_incident_message(updated)
         except Exception as e:
-            app.logger.error(f"Error assigning owner: {e}")
+            logger.error(f"Failed to assign owner: {e}")
 
     # --------------------------------------------------
     # Resolve Button
@@ -74,7 +89,15 @@ def register_actions(app: App):
             if updated:
                 SlackService.update_incident_message(updated)
         except Exception as e:
-            app.logger.error(f"Error resolving incident: {e}")
+            logger.error(f"Failed to resolve incident: {e}")
+            try:
+                client.chat_postEphemeral(
+                    channel=body["channel"]["id"],
+                    user=body["user"]["id"],
+                    text="⚠️ Something went wrong. Please try again.",
+                )
+            except Exception:
+                pass
 
     # --------------------------------------------------
     # Generate Update Button
@@ -119,4 +142,12 @@ def register_actions(app: App):
             )
 
         except Exception as e:
-            app.logger.error(f"Error generating update: {e}")
+            logger.error(f"Failed to generate update: {e}")
+            try:
+                client.chat_postEphemeral(
+                    channel=body["channel"]["id"],
+                    user=body["user"]["id"],
+                    text="⚠️ Something went wrong. Please try again.",
+                )
+            except Exception:
+                pass

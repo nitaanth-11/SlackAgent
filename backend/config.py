@@ -20,8 +20,6 @@ DEFAULT_SLACK_CHANNEL = os.getenv("DEFAULT_SLACK_CHANNEL")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-print("SUPABASE_URL:", SUPABASE_URL)
-print("SUPABASE_KEY exists:", bool(SUPABASE_SECRET_KEY))
 # -------------------------
 # Database
 # -------------------------

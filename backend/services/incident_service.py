@@ -43,15 +43,15 @@ class IncidentService:
         response = supabase.table("incidents").insert(incident).execute()
         incident_obj = IncidentResponse(**response.data[0])
 
-        enrichment = enrich_incident(incident_obj)
-
-        print("\n========== AI ENRICHMENT ==========")
-        print(enrichment)
-        print("==================================\n")
-        
         logger.info(f"Incident created: {incident['incident_id']}")
         result = response.data[0]
-        result["ai_enrichment"] = enrichment.model_dump()
+
+        try:
+            enrichment = enrich_incident(incident_obj)
+            result["ai_enrichment"] = enrichment.model_dump()
+        except Exception as e:
+            logger.error(f"AI enrichment failed: {e}")
+            result["ai_enrichment"] = None
         return result
 
     # --------------------------------------------------
