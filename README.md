@@ -140,5 +140,5 @@ This project was developed as part of the Slack Agent Builder Hackathon.
 
 ## Team
 
-- [Name 1] - [Role]
-- [Name 2] - [Role]
+- Nitaanth Panickar
+- Tanaya Paralkar
