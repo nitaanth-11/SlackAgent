@@ -3,6 +3,14 @@ from slack_bolt import App
 
 logger = logging.getLogger(__name__)
 
+def _is_resolved(incident_id: str, body: dict, client) -> bool:
+    from services.incident_service import IncidentService
+    inc = IncidentService.get_incident(incident_id) or {}
+    if inc.get("status", "").upper() == "RESOLVED":
+        try: client.chat_postEphemeral(channel=body["channel"]["id"], user=body["user"]["id"], text="⚠️ This incident is already resolved.")
+        except Exception: pass
+        return True
+    return False
 
 def register_actions(app: App):
 
@@ -15,6 +23,7 @@ def register_actions(app: App):
         ack()
         try:
             incident_id = body["actions"][0]["value"]
+            if _is_resolved(incident_id, body, client): return
             trigger_id = body["trigger_id"]
 
             # Open a modal to collect the owner name
@@ -81,6 +90,7 @@ def register_actions(app: App):
         ack()
         try:
             incident_id = body["actions"][0]["value"]
+            if _is_resolved(incident_id, body, client): return
 
             from services.incident_service import IncidentService
             from services.slack_service import SlackService
@@ -108,6 +118,7 @@ def register_actions(app: App):
         ack()
         try:
             incident_id = body["actions"][0]["value"]
+            if _is_resolved(incident_id, body, client): return
 
             from services.incident_service import IncidentService
 

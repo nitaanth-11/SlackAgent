@@ -53,6 +53,13 @@ def build_incident_blocks(incident: dict) -> list:
         {"type": "divider"},
         {
             "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*{incident.get('title', 'Untitled')}*\n{incident.get('description', '')}",
+            },
+        },
+        {
+            "type": "section",
             "fields": [
                 {"type": "mrkdwn", "text": f"*ID:*\n`{incident_id}`"},
                 {"type": "mrkdwn", "text": f"*Severity:*\n{severity_str}"},
@@ -61,23 +68,9 @@ def build_incident_blocks(incident: dict) -> list:
             ],
         },
         {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Title:*\n{incident.get('title', '')}",
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Description:*\n{incident.get('description', '')}",
-            },
-        },
-        {
             "type": "context",
             "elements": [
-                {"type": "mrkdwn", "text": f"*Owner:* {owner}"},
+                {"type": "mrkdwn", "text": f":bust_in_silhouette: *Owner:* {owner}"},
             ],
         },
 
@@ -88,7 +81,7 @@ def build_incident_blocks(incident: dict) -> list:
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    "*🤖 AI Incident Analysis*\n\n"
+                    ":robot_face: *AI Incident Analysis*\n\n"
                     f"*Summary:*\n{summary}\n\n"
                     f"*Predicted Severity:*\n{severity_text}\n\n"
                     f"*Most Likely Cause:*\n{cause_text}\n\n"
@@ -103,7 +96,7 @@ def build_incident_blocks(incident: dict) -> list:
             "elements": [
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": ":bust_in_silhouette: Assign Owner", "emoji": True},
+                    "text": {"type": "plain_text", "text": ":bust_in_silhouette: Reassign Owner" if incident.get("owner") else ":bust_in_silhouette: Assign Owner", "emoji": True},
                     "style": "primary",
                     "value": incident_id,
                     "action_id": "assign_owner",
@@ -165,6 +158,13 @@ def build_updated_blocks(incident: dict) -> list:
         {"type": "divider"},
         {
             "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*{incident.get('title', 'Untitled')}*\n{incident.get('description', '')}",
+            },
+        },
+        {
+            "type": "section",
             "fields": [
                 {"type": "mrkdwn", "text": f"*ID:*\n`{incident_id}`"},
                 {"type": "mrkdwn", "text": f"*Severity:*\n{severity_str}"},
@@ -173,23 +173,9 @@ def build_updated_blocks(incident: dict) -> list:
             ],
         },
         {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Title:*\n{incident.get('title', '')}",
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Description:*\n{incident.get('description', '')}",
-            },
-        },
-        {
             "type": "context",
             "elements": [
-                {"type": "mrkdwn", "text": f"*Owner:* {owner}"},
+                {"type": "mrkdwn", "text": f":bust_in_silhouette: *Owner:* {owner}"},
             ],
         },
     ]
@@ -201,7 +187,7 @@ def build_updated_blocks(incident: dict) -> list:
             "elements": [
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": ":bust_in_silhouette: Assign Owner", "emoji": True},
+                    "text": {"type": "plain_text", "text": ":bust_in_silhouette: Reassign Owner" if incident.get("owner") else ":bust_in_silhouette: Assign Owner", "emoji": True},
                     "style": "primary",
                     "value": incident_id,
                     "action_id": "assign_owner",
